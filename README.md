@@ -2,7 +2,69 @@
 
 An intelligent, event-driven expense approval agent and compliance auditor built using the **Google Agent Development Kit (ADK)** and deployed on **Vertex AI Agent Engine (Reasoning Engine)**. The project includes a sleek, modern **Manager Approval Dashboard** hosted on **Cloud Run** for human-in-the-loop workflows.
 
+## 📐 System Architecture
+
+The following diagram illustrates the end-to-end architecture, including event ingestion via Pub/Sub, the internal routing & security checkpoint workflow inside the Agent Runtime, and the human-in-the-loop validation via the Cloud Run manager dashboard:
+
+```mermaid
+graph TD
+    classDef default fill:#111,stroke:#333,stroke-width:1px,color:#fff;
+    classDef engine fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#fff;
+    classDef pubsub fill:#7c2d12,stroke:#f97316,stroke-width:2px,color:#fff;
+    classDef dashboard fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef decision fill:#78350f,stroke:#eab308,stroke-width:2px,color:#fff;
+
+    %% Event Ingestion Flow
+    subgraph Ingestion [Event Ingestion]
+        A[Finance System / Client] -->|Publish JSON| B(Pub/Sub Topic: expense-reports)
+        B -->|OIDC Authenticated Push| C[Vertex AI Agent Runtime]
+    end
+
+    %% Agent Graph Flow
+    subgraph Runtime [Agent Runtime Workflow]
+        C --> parse[parse_input_event]
+        parse --> route{Amount >= $100?}
+        
+        %% Auto Approve path
+        route -->|< $100| auto[auto_approve_handler]
+        auto -->|Approve| done[Process Completed]
+        
+        %% Audit path
+        route -->|>= $100| security[security_checkpoint]
+        
+        %% Security Checkpoint Details
+        security --> PII[PII Scrubbing: SSN/Credit Card]
+        PII --> check{Prompt Injection Detected?}
+        
+        %% Direct Human Bypass
+        check -->|Yes| human[human_approval node]
+        
+        %% LLM review path
+        check -->|No| llm[llm_risk_review node: Gemini]
+        llm --> human
+        
+        %% Human Approval Interruption
+        human -->|Pause & RequestInput| interrupt[Interruption State]
+    end
+
+    %% Human-in-the-Loop Web App
+    subgraph Frontend [Management Dashboard - Cloud Run]
+        interrupt -->|GET /api/pending| db[Manager Dashboard UI]
+        manager[Human Manager] -->|Approves / Rejects| db
+        db -->|POST /api/action| resume[Resume Session]
+    end
+
+    resume -->|OIDC Resumed Input| human
+    human -->|Final Decision| done
+
+    class C,parse,security,llm,human,PII,auto engine;
+    class B pubsub;
+    class db,resume dashboard;
+    class route,check decision;
+```
+
 ## 🚀 Key Features
+
 
 *   **Automated Routing & Approvals:** Automatically approves expenses under a specified threshold ($100.00) and routes larger amounts to a multi-stage review pipeline.
 *   **AI-Powered Compliance Audit:** Leverages Gemini (via the ADK LlmAgent) to evaluate transaction risk, assign a risk score, list potential policy violations, and provide audit reasoning.
