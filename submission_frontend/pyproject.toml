@@ -1,0 +1,20 @@
+[project]
+name = "submission-frontend"
+version = "0.1.0"
+description = "FastAPI Manager Dashboard for Ambient Expense Agent"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
+    "google-adk[gcp]>=2.0.0,<3.0.0",
+    "google-cloud-aiplatform>=1.156.0",
+    "python-dotenv>=1.0.1",
+]
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["main.py"]
+
